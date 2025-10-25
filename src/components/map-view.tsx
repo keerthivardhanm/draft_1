@@ -1,11 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import type { Zone, SubZone } from '@/lib/types';
-import { kpiData } from '@/lib/data';
+import type { Zone } from '@/lib/types';
 
 
 const DENSITY_THRESHOLDS = { low: 0.5, medium: 1.0 };
@@ -13,11 +9,6 @@ const RISK_DENSITY_MAX = 2.0;
 const ZONE_KEY = 'flowtrack_zones_v2';
 const COUNTS_KEY = 'flowtrack_counts_v1';
 
-const initialOrganizers = [
-    { id: 'org-1', name: 'John Doe', email: 'john.d@example.com' },
-    { id: 'org-2', name: 'Jane Smith', email: 'jane.s@example.com' },
-    { id: 'org-3', name: 'Peter Jones', email: 'peter.j@example.com' },
-];
 
 export function MapView() {
     const mapRef = useRef<HTMLDivElement>(null);
@@ -26,35 +17,187 @@ export function MapView() {
     const [zoneCounts, setZoneCounts] = useState<Record<string, number>>({});
     const [status, setStatus] = useState('Initializing...');
     const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
-    
-    const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
-    const [isDrawingSubZone, setIsDrawingSubZone] = useState(false);
-    
-    // In a real app, this would come from your user management system (e.g., Firebase)
-    const [organizers] = useState(initialOrganizers);
+    const zoneMetaRef = useRef<any[]>([]);
+    const simsRef = useRef<any>({});
+    const heatmapLayerRef = useRef<google.maps.visualization.HeatmapLayer | null>(null);
+    const zoneHeatOverlaysRef = useRef<Record<string, google.maps.Polygon>>({});
+    const [heatOverlaysVisible, setHeatOverlaysVisible] = useState(true);
 
-    const saveZonesToStorage = (updatedZones: Record<string, Zone>) => {
-        const zonesToSave: Record<string, any> = {};
-        Object.values(updatedZones).forEach(z => {
-            zonesToSave[z.id] = {
-                id: z.id,
-                name: z.name,
-                polygon: z.polygon,
-                area: z.area,
-                capacity: z.capacity,
-                color: z.color,
-                organizers: z.organizers,
-                subZones: Object.values(z.subZones || {}).map(sz => ({
-                    id: sz.id,
-                    name: sz.name,
-                    polygon: sz.polygon,
-                    area: sz.area,
-                    capacity: sz.capacity,
-                }))
-            };
-        });
-        localStorage.setItem(ZONE_KEY, JSON.stringify(zonesToSave));
+    const getRiskColor = (density: number) => {
+        if (density < DENSITY_THRESHOLDS.low) return '#2ecc71';
+        if (density < DENSITY_THRESHOLDS.medium) return '#f1c40f';
+        return '#e74c3c';
     };
+
+    const updateAllZoneCards = () => {
+        const zoneMeta = zoneMetaRef.current;
+        const newCounts = { ...zoneCounts };
+        
+        zoneMeta.forEach(z => {
+            const count = newCounts[z.id] || 0;
+            const area = z.area || 1;
+            const density = count / (area / 100);
+            const risk = getRiskColor(density);
+            const countEl = document.getElementById(`count-${z.id}`);
+            if (countEl) countEl.textContent = String(count);
+            const fill = document.getElementById(`risk-${z.id}`);
+            if (fill) {
+                (fill as HTMLElement).style.width = `${Math.min((density / RISK_DENSITY_MAX) * 100, 100)}%`;
+                (fill as HTMLElement).style.background = risk;
+            }
+        });
+        updateZoneHeatOverlays(newCounts);
+    };
+
+    const renderZoneCard = (z: any) => {
+        const list = document.getElementById('zones-list');
+        if (!list) return;
+
+        let card = document.getElementById(`card-${z.id}`);
+        const areaLabel = ((z.area || 0) / 100).toFixed(1) + ' m²';
+
+        if (!card) {
+            card = document.createElement('div');
+            card.className = 'card';
+            card.id = `card-${z.id}`;
+            list.appendChild(card);
+        }
+
+        card.innerHTML = `
+            <div class="zone-title">
+                <strong>${z.name}</strong>
+                <span class="badge">${areaLabel}</span>
+            </div>
+            <div class="zone-stats">People: <span id="count-${z.id}">0</span></div>
+            <div class="risk-bar"><div id="risk-${z.id}" class="risk-fill"></div></div>
+            <div style="margin-top:8px;display:flex;gap:6px">
+                <button data-action="rename" data-zone="${z.id}" class="secondary-button" style="padding:6px 8px">Rename</button>
+                <button data-action="delete" data-zone="${z.id}" style="background:#e53935;padding:6px 8px">Delete</button>
+            </div>
+        `;
+        card.querySelector('button[data-action="rename"]')?.addEventListener('click', () => {
+            const newName = prompt('Zone name:', z.name) || z.name;
+            const zm = zoneMetaRef.current.find(x => x.id === z.id);
+            if (zm) {
+                zm.name = newName;
+                saveZonesToStorage();
+                renderZoneCard(zm);
+            }
+        });
+        card.querySelector('button[data-action="delete"]')?.addEventListener('click', () => {
+            if (!confirm('Delete zone?')) return;
+            const idx = zoneMetaRef.current.findIndex(x => x.id === z.id);
+            if (idx >= 0) {
+                const zm = zoneMetaRef.current[idx];
+                zm.overlay?.setMap(null);
+                zoneMetaRef.current.splice(idx, 1);
+                saveZonesToStorage();
+                card?.remove();
+                setZoneCounts(prev => {
+                    const newCounts = {...prev};
+                    delete newCounts[z.id];
+                    return newCounts;
+                });
+            }
+        });
+    };
+    
+    const saveZonesToStorage = () => {
+        const saveData = zoneMetaRef.current.map(z => ({ id: z.id, name: z.name, polygon: z.polygon, area: z.area, color: z.color }));
+        localStorage.setItem(ZONE_KEY, JSON.stringify(saveData));
+    };
+
+    const attachEditHandlers = (meta: any) => {
+        const polygon = meta.overlay;
+        const syncMeta = () => {
+            const path = polygon.getPath().getArray().map((p: google.maps.LatLng) => ({ lat: p.lat(), lng: p.lng() }));
+            const area = google.maps.geometry.spherical.computeArea(polygon.getPath());
+            meta.polygon = path;
+            meta.area = area;
+            saveZonesToStorage();
+            updateAllZoneCards();
+        };
+        polygon.getPath().addListener('set_at', syncMeta);
+        polygon.getPath().addListener('insert_at', syncMeta);
+        polygon.getPath().addListener('remove_at', syncMeta);
+    };
+
+    const addZoneToMap = (z: any) => {
+        const colors = ["#F44336", "#2196F3", "#4CAF50", "#FFC107", "#9C27B0", "#FF5722"];
+        const color = z.color || colors[zoneMetaRef.current.length % colors.length];
+
+        const polygon = new google.maps.Polygon({
+            paths: z.polygon,
+            strokeColor: color,
+            strokeWeight: 2,
+            fillColor: color,
+            fillOpacity: 0.25,
+            editable: true,
+            map: map,
+        });
+
+        const meta = { ...z, overlay: polygon, color };
+        zoneMetaRef.current.push(meta);
+        attachEditHandlers(meta);
+        renderZoneCard(meta);
+        saveZonesToStorage();
+    };
+
+
+    const renderZonesFromStorage = () => {
+        zoneMetaRef.current.forEach(z => z.overlay?.setMap(null));
+        zoneMetaRef.current = [];
+        const list = document.getElementById('zones-list');
+        if(list) list.innerHTML = '';
+
+        const raw = localStorage.getItem(ZONE_KEY);
+        const saved = raw ? JSON.parse(raw) : [];
+        saved.forEach(addZoneToMap);
+        updateAllZoneCards();
+    };
+
+    const updateZoneHeatOverlays = (currentCounts: Record<string, number>) => {
+        if (!map || !google?.maps) return;
+        const keep = new Set();
+        
+        zoneMetaRef.current.forEach(z => {
+            keep.add(z.id);
+            const count = currentCounts[z.id] || 0;
+            const area = z.area || 1;
+            const density = count / (area / 100);
+            const color = getRiskColor(density);
+            const opacity = Math.max(0.12, Math.min(0.7, (density / RISK_DENSITY_MAX) * 0.7));
+
+            if (zoneHeatOverlaysRef.current[z.id]) {
+                zoneHeatOverlaysRef.current[z.id].setOptions({
+                    paths: z.polygon,
+                    fillColor: color,
+                    fillOpacity: opacity,
+                });
+            } else {
+                zoneHeatOverlaysRef.current[z.id] = new google.maps.Polygon({
+                    paths: z.polygon,
+                    strokeOpacity: 0,
+                    fillColor: color,
+                    fillOpacity: opacity,
+                    clickable: false,
+                    map: map,
+                });
+            }
+            zoneHeatOverlaysRef.current[z.id].setMap(heatOverlaysVisible ? map : null);
+        });
+
+        Object.keys(zoneHeatOverlaysRef.current).forEach(id => {
+            if (!keep.has(id)) {
+                zoneHeatOverlaysRef.current[id].setMap(null);
+                delete zoneHeatOverlaysRef.current[id];
+            }
+        });
+    }
+
+    useEffect(() => {
+        updateAllZoneCards();
+    }, [zoneCounts, heatOverlaysVisible]);
 
     useEffect(() => {
         if (!mapRef.current || map) return;
@@ -66,126 +209,18 @@ export function MapView() {
                 mapTypeId: 'roadmap'
             });
             setMap(mapInstance);
+            setStatus('Ready');
         };
 
         if (window.google && window.google.maps) {
             initMap();
-        } else {
-            const interval = setInterval(() => {
-                if (window.google && window.google.maps) {
-                    clearInterval(interval);
-                    initMap();
-                }
-            }, 100);
         }
     }, [mapRef, map]);
-
-    const attachEditHandlers = (overlay: google.maps.Polygon, id: string, isSubZone: boolean, parentId?: string) => {
-        const syncMeta = () => {
-            const path = overlay.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
-            const area = google.maps.geometry.spherical.computeArea(overlay.getPath());
-            setZones(prev => {
-                const newZones = { ...prev };
-                if (isSubZone && parentId && newZones[parentId]) {
-                    const parentZone = newZones[parentId];
-                    const subZone = parentZone.subZones[id];
-                    if (subZone) {
-                        subZone.polygon = path;
-                        subZone.area = area;
-                        subZone.overlay.setPaths(path);
-                    }
-                } else if(newZones[id]) {
-                    const zone = newZones[id];
-                    zone.polygon = path;
-                    zone.area = area;
-                    zone.overlay.setPaths(path);
-                }
-                saveZonesToStorage(newZones);
-                return newZones;
-            });
-        };
-        overlay.getPath().addListener('set_at', syncMeta);
-        overlay.getPath().addListener('insert_at', syncMeta);
-        overlay.getPath().addListener('remove_at', syncMeta);
-    };
-
-    const addZoneToState = (zone: Zone) => {
-        setZones(prev => {
-            const newZones = { ...prev, [zone.id]: zone };
-            saveZonesToStorage(newZones);
-            return newZones;
-        });
-        attachEditHandlers(zone.overlay, zone.id, false);
-        google.maps.event.addListener(zone.overlay, 'click', () => {
-             setSelectedZoneId(zone.id);
-             setIsDrawingSubZone(false);
-             drawingManagerRef.current?.setDrawingMode(null);
-        });
-    };
-    
-    const addSubZoneToState = (subZone: SubZone, parentId: string) => {
-        setZones(prev => {
-            const newZones = { ...prev };
-            const parentZone = newZones[parentId];
-            if (parentZone) {
-                parentZone.subZones[subZone.id] = subZone;
-                saveZonesToStorage(newZones);
-            }
-            return newZones;
-        });
-        attachEditHandlers(subZone.overlay, subZone.id, true, parentId);
-    };
 
 
     useEffect(() => {
         if (!map) return;
 
-        // Load initial zones
-        const rawZones = localStorage.getItem(ZONE_KEY);
-        const loadedZonesData: Record<string, any> = rawZones ? JSON.parse(rawZones) : {};
-        const initialZones: Record<string, Zone> = {};
-
-        Object.values(loadedZonesData).forEach((zData: any) => {
-            const zonePolygon = new google.maps.Polygon({
-                paths: zData.polygon,
-                strokeColor: zData.color,
-                strokeWeight: 2,
-                fillColor: zData.color,
-                fillOpacity: 0.25,
-                editable: true,
-                map: map,
-            });
-            const newZone: Zone = { 
-                ...zData,
-                overlay: zonePolygon,
-                subZones: {},
-            };
-            
-            (zData.subZones || []).forEach((szData: any) => {
-                 const subZonePolygon = new google.maps.Polygon({
-                    paths: szData.polygon,
-                    strokeColor: zData.color,
-                    strokeOpacity: 0.8,
-                    strokeWeight: 1,
-                    fillColor: zData.color,
-                    fillOpacity: 0.4,
-                    editable: true,
-                    map: map,
-                });
-                newZone.subZones[szData.id] = { ...szData, overlay: subZonePolygon, parentId: newZone.id };
-                attachEditHandlers(subZonePolygon, szData.id, true, newZone.id);
-            });
-
-            initialZones[newZone.id] = newZone;
-            attachEditHandlers(zonePolygon, newZone.id, false);
-            google.maps.event.addListener(zonePolygon, 'click', () => {
-                setSelectedZoneId(newZone.id);
-                setIsDrawingSubZone(false);
-                drawingManagerRef.current?.setDrawingMode(null);
-            });
-        });
-        setZones(initialZones);
-        
         // Setup Drawing Manager
         const drawingManager = new google.maps.drawing.DrawingManager({
             drawingMode: null,
@@ -193,10 +228,7 @@ export function MapView() {
             drawingControlOptions: { drawingModes: [google.maps.drawing.OverlayType.POLYGON] },
             polygonOptions: {
                 editable: true,
-                fillColor: '#42a5f5',
                 fillOpacity: 0.2,
-                strokeColor: '#1e88e5',
-                strokeWeight: 2,
             },
         });
         drawingManager.setMap(map);
@@ -207,217 +239,198 @@ export function MapView() {
                 const poly = e.overlay as google.maps.Polygon;
                 const path = poly.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
                 const area = google.maps.geometry.spherical.computeArea(poly.getPath());
-
-                if (isDrawingSubZone && selectedZoneId) {
-                    const parentZone = zones[selectedZoneId];
-                    if (!parentZone) return;
-                     if (!google.maps.geometry.poly.containsLocation(poly.getPath().getAt(0), parentZone.overlay)) {
-                        alert("Sub-zone must be inside its parent zone.");
-                        poly.setMap(null);
-                        return;
-                    }
-                    const subId = 'subzone_' + Date.now();
-                    const subName = prompt('Enter Sub-Zone Name:', `Sub-Zone ${Object.keys(parentZone.subZones).length + 1}`) || subId;
-                    
-                    const newSubZone: SubZone = { 
-                        id: subId, 
-                        name: subName, 
-                        polygon: path, 
-                        area, 
-                        overlay: poly,
-                        capacity: 50,
-                        parentId: selectedZoneId
-                    };
-                    poly.setOptions({
-                        fillColor: parentZone.color,
-                        strokeColor: parentZone.color,
-                        fillOpacity: 0.4,
-                        strokeOpacity: 0.8,
-                        strokeWeight: 1,
-                    });
-                    addSubZoneToState(newSubZone, selectedZoneId);
-                } else {
-                    const id = 'zone_' + Date.now();
-                    const name = prompt('Enter Zone Name:', 'Zone ' + (Object.keys(zones).length + 1)) || id;
-                    const colors = ["#F44336", "#2196F3", "#4CAF50", "#FFC107", "#9C27B0", "#FF5722"];
-                    const color = colors[Object.keys(zones).length % colors.length];
-                    poly.setOptions({
-                        fillColor: color,
-                        strokeColor: color,
-                    });
-
-                    const newZone: Zone = { 
-                        id, 
-                        name, 
-                        polygon: path, 
-                        area, 
-                        overlay: poly, 
-                        capacity: 200, 
-                        color: color, 
-                        organizers: [], 
-                        subZones: {}
-                    };
-                    addZoneToState(newZone);
-                }
+                const id = 'zone_' + Date.now();
+                const name = prompt('Enter Zone Name:', 'Zone ' + (zoneMetaRef.current.length + 1)) || id;
+                
+                const newZoneMeta = { id, name, polygon: path, area, overlay: poly };
+                addZoneToMap(newZoneMeta);
                 
                 drawingManager.setDrawingMode(null);
-                setIsDrawingSubZone(false);
             }
         });
         
-        setStatus('Ready');
+        renderZonesFromStorage();
 
         return () => {
             google.maps.event.removeListener(overlayCompleteListener);
             drawingManager.setMap(null);
         };
 
-    }, [map, isDrawingSubZone, selectedZoneId, zones]);
+    }, [map]);
 
+    const spawnSimulatedPeople = (n: number) => {
+        const center = map?.getCenter();
+        if (!center) return;
 
-    const handleUpdateZone = (zoneId: string, updates: Partial<Zone>) => {
-        setZones(prev => {
-            const newZones = { ...prev };
-            if(newZones[zoneId]) {
-                newZones[zoneId] = { ...newZones[zoneId], ...updates };
-                saveZonesToStorage(newZones);
-            }
-            return newZones;
-        });
-    };
-    
-    const handleUpdateSubZone = (subZoneId: string, parentId: string, updates: Partial<SubZone>) => {
-        setZones(prev => {
-            const newZones = { ...prev };
-            const parent = newZones[parentId];
-            if(parent && parent.subZones[subZoneId]) {
-                parent.subZones[subZoneId] = { ...parent.subZones[subZoneId], ...updates };
-                saveZonesToStorage(newZones);
-            }
-            return newZones;
-        });
-    };
-
-    const handleDeleteZone = (zoneId: string) => {
-        if (!confirm('Are you sure you want to delete this zone and all its sub-zones?')) return;
-        setZones(prev => {
-            const newZones = { ...prev };
-            const zoneToRemove = newZones[zoneId];
-            if (zoneToRemove) {
-                zoneToRemove.overlay.setMap(null);
-                Object.values(zoneToRemove.subZones).forEach(sz => sz.overlay.setMap(null));
-                delete newZones[zoneId];
-                saveZonesToStorage(newZones);
-            }
-            return newZones;
-        });
-        if (selectedZoneId === zoneId) {
-            setSelectedZoneId(null);
+        const baseIndex = Object.keys(simsRef.current).length;
+        for (let i = 0; i < n; i++) {
+            const lat = center.lat() + (Math.random() - 0.5) * 0.002;
+            const lng = center.lng() + (Math.random() - 0.5) * 0.002;
+            const pos = new google.maps.LatLng(lat, lng);
+            const marker = new google.maps.Marker({
+                position: pos,
+                map: map,
+                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 5, fillColor: '#ff9800', fillOpacity: 1, strokeWeight: 0 },
+            });
+            const id = 'sim-' + (baseIndex + i);
+            simsRef.current[id] = { id, marker, zoneId: null };
+            trackSim(id);
         }
     };
     
-    const handleDeleteSubZone = (subZoneId: string, parentId: string) => {
-        if (!confirm('Are you sure you want to delete this sub-zone?')) return;
-         setZones(prev => {
-            const newZones = { ...prev };
-            const parent = newZones[parentId];
-            if (parent && parent.subZones[subZoneId]) {
-                parent.subZones[subZoneId].overlay.setMap(null);
-                delete parent.subZones[subZoneId];
-                saveZonesToStorage(newZones);
-            }
-            return newZones;
-        });
+    const trackSim = (id: string) => {
+        setInterval(() => {
+            const sim = simsRef.current[id];
+            if (!sim || !sim.marker) return;
+
+            const currentPos = sim.marker.getPosition();
+            if(!currentPos) return;
+
+            const newPos = new google.maps.LatLng(
+                currentPos.lat() + (Math.random() - 0.5) * 0.0005,
+                currentPos.lng() + (Math.random() - 0.5) * 0.0005
+            );
+            sim.marker.setPosition(newPos);
+            checkUserInZone(id, newPos);
+        }, 2500);
     };
 
-    const handleStartDrawSubZone = () => {
-        if (!selectedZoneId) {
-            alert("Please select a main zone first.");
+    const checkUserInZone = (simId: string, pos: google.maps.LatLng) => {
+        let insideZoneId: string | null = null;
+        for (const z of zoneMetaRef.current) {
+            if (google.maps.geometry.poly.containsLocation(pos, z.overlay)) {
+                insideZoneId = z.id;
+                break;
+            }
+        }
+        
+        const sim = simsRef.current[simId];
+        const prevZoneId = sim.zoneId;
+
+        if (prevZoneId !== insideZoneId) {
+            setZoneCounts(prev => {
+                const newCounts = {...prev};
+                if (prevZoneId) newCounts[prevZoneId] = Math.max(0, (newCounts[prevZoneId] || 0) - 1);
+                if (insideZoneId) newCounts[insideZoneId] = (newCounts[insideZoneId] || 0) + 1;
+                return newCounts;
+            });
+            sim.zoneId = insideZoneId;
+        }
+    };
+
+     const estimateCrowd = async (totalSample = 25000) => {
+        if (zoneMetaRef.current.length === 0) { alert('No zones defined'); return; }
+        setStatus(`Estimating distribution for ${totalSample} sample audience...`);
+
+        const newCounts: Record<string, number> = {};
+        zoneMetaRef.current.forEach(z => newCounts[z.id] = 0);
+
+        const bounds = map?.getBounds();
+        if (!bounds) { alert('Map bounds not ready'); return; }
+        const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+        
+        const heatPoints: google.maps.LatLng[] = [];
+        
+        let processed = 0;
+        const batch = 2000;
+        
+        while (processed < totalSample) {
+            const take = Math.min(batch, totalSample - processed);
+            for (let i = 0; i < take; i++) {
+                const lat = sw.lat() + Math.random() * (ne.lat() - sw.lat());
+                const lng = sw.lng() + Math.random() * (ne.lng() - sw.lng());
+                const point = new google.maps.LatLng(lat, lng);
+                for (let z of zoneMetaRef.current) {
+                    if (google.maps.geometry.poly.containsLocation(point, z.overlay)) {
+                        newCounts[z.id] = (newCounts[z.id] || 0) + 1;
+                        heatPoints.push(point);
+                        break; 
+                    }
+                }
+            }
+            processed += take;
+            await new Promise(r => setTimeout(r, 10));
+        }
+
+        const sampleTotalInside = Object.values(newCounts).reduce((a,b)=>a+b,0);
+        if (sampleTotalInside === 0) {
+            alert('No sampled points fell into zones — try zooming in');
+            setStatus('Ready');
             return;
         }
-        setIsDrawingSubZone(true);
-        drawingManagerRef.current?.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+
+        const estimatedCounts: Record<string, number> = {};
+        for (let z of zoneMetaRef.current) {
+            estimatedCounts[z.id] = Math.round(((newCounts[z.id] || 0) / sampleTotalInside) * totalSample);
+        }
+        setZoneCounts(estimatedCounts);
+
+        if (google.maps.visualization && heatPoints.length) {
+            heatmapLayerRef.current?.setMap(null);
+            heatmapLayerRef.current = new google.maps.visualization.HeatmapLayer({
+                data: heatPoints,
+                map: map,
+                radius: 20,
+                opacity: 0.6
+            });
+        }
+        
+        setStatus(`Estimated distribution applied (sample=${totalSample})`);
     };
 
-    const selectedZone = selectedZoneId ? zones[selectedZoneId] : null;
+    const exportCsv = () => {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Zone ID,Zone Name,People Count,Area (m^2),Density (people/m^2)\n";
+
+        zoneMetaRef.current.forEach(z => {
+            const count = zoneCounts[z.id] || 0;
+            const area = z.area || 1;
+            const density = count / (area / 100);
+            csvContent += `${z.id},"${z.name}",${count},${(area/100).toFixed(2)},${density.toFixed(3)}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "crowd_report.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     return (
         <div className="map-container">
             <div ref={mapRef} id="map" />
             <div id="right">
-                <h2>Zone Controls</h2>
+                <h2>Flow-Track — Zones & Live Metrics</h2>
                 <div className="card controls">
-                     <div className="small mb-2">Click the polygon icon on the map to draw a new main zone. Click an existing zone on the map to select it.</div>
-                     <Button onClick={handleStartDrawSubZone} disabled={!selectedZoneId || isDrawingSubZone}>
-                        Draw Sub-Zone in '{selectedZone?.name || "..."}'
-                    </Button>
+                    <div className="small">Drawing Tools</div>
+                    <div style={{ marginTop: '8px' }}>
+                        <div className="small">Click the polygon icon on the map to draw a zone. After drawing, zone is saved automatically.</div>
+                    </div>
+                    <hr className="my-2" />
+                    <div className="small">Simulated Attendees (for demo)</div>
+                    <div className="sim-row">
+                        <input id="sim-count" type="number" min="1" defaultValue="6" />
+                        <button id="spawn-sim" onClick={() => spawnSimulatedPeople(Number((document.getElementById('sim-count') as HTMLInputElement).value))}>Spawn</button>
+                    </div>
+                    <div style={{ marginTop: '8px' }}>
+                         <button id="estimate-crowd" className='secondary-button' onClick={() => estimateCrowd(25000)}>Estimate for 25,000</button>
+                    </div>
+                    <div style={{ marginTop: '8px' }}>
+                        <button id="export-csv" onClick={exportCsv}>Download Crowd Report (CSV)</button>
+                    </div>
+                     <div style={{ marginTop: '8px' }}>
+                        <button id="toggle-heat" style={{background: '#8e24aa'}} onClick={() => setHeatOverlaysVisible(v => !v)}>Toggle Zone Heat Overlay</button>
+                    </div>
                 </div>
-                
-                {selectedZone ? (
-                    <div id="zone-details" className="mt-4">
-                        <h3>Details for: {selectedZone.name}</h3>
-                        <div className="card">
-                             <label htmlFor="zone-name" className="text-sm font-medium">Zone Name</label>
-                             <Input 
-                                id="zone-name"
-                                value={selectedZone.name}
-                                onChange={(e) => handleUpdateZone(selectedZone.id, { name: e.target.value })}
-                             />
-                              <label htmlFor="zone-capacity" className="mt-2 text-sm font-medium">Capacity</label>
-                             <Input 
-                                id="zone-capacity"
-                                type="number"
-                                value={selectedZone.capacity}
-                                onChange={(e) => handleUpdateZone(selectedZone.id, { capacity: parseInt(e.target.value, 10) || 0 })}
-                             />
 
-                             <label htmlFor="zone-organizers" className="mt-2 text-sm font-medium">Assign Organizers</label>
-                             <Select
-                                value={selectedZone.organizers.join(',')}
-                                onValueChange={(value) => handleUpdateZone(selectedZone.id, { organizers: value ? value.split(',') : [] })}
-                             >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select organizers" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {organizers.map(org => (
-                                        <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <span className="text-xs text-muted-foreground">{selectedZone.organizers.length} organizer(s) assigned.</span>
-
-
-                             <Button onClick={() => handleDeleteZone(selectedZone.id)} variant="destructive" className="mt-4 w-full">Delete Main Zone</Button>
-                        </div>
-
-                        <h4 className="mt-4">Sub-Zones in {selectedZone.name}</h4>
-                        <div id="subzones-list">
-                            {Object.values(selectedZone.subZones).map(subZone => (
-                                <div key={subZone.id} className="card">
-                                     <label className="text-sm font-medium">Sub-Zone Name</label>
-                                     <Input
-                                        value={subZone.name}
-                                        onChange={(e) => handleUpdateSubZone(subZone.id, selectedZone.id, { name: e.target.value })}
-                                     />
-                                     <label className="mt-2 text-sm font-medium">Capacity</label>
-                                      <Input 
-                                        type="number"
-                                        value={subZone.capacity}
-                                        onChange={(e) => handleUpdateSubZone(subZone.id, selectedZone.id, { capacity: parseInt(e.target.value, 10) || 0 })}
-                                     />
-                                     <Button onClick={() => handleDeleteSubZone(subZone.id, selectedZone.id)} variant="destructive" className="mt-2 w-full text-xs" size="sm">Delete Sub-Zone</Button>
-                                </div>
-                            ))}
-                            {Object.keys(selectedZone.subZones).length === 0 && <p className="text-sm text-muted-foreground p-2">No sub-zones created yet.</p>}
-                        </div>
-
-                    </div>
-                ) : (
-                    <div className="mt-4 p-4 text-center bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Select a zone on the map to see its details and manage sub-zones.</p>
-                    </div>
-                )}
+                <div id="zones-list"></div>
+                <div className="card">
+                    <div className="small">System Status</div>
+                    <div id="status" className="small">{status}</div>
+                    <div style={{ marginTop: '8px' }} className="small">Client-side simulation running.</div>
+                </div>
             </div>
         </div>
     )
