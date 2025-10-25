@@ -10,34 +10,42 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        // If claims are still loading, don't redirect yet
-        if (customClaims === null) return;
+    // Wait until the loading is complete
+    if (loading) {
+      return;
+    }
 
-        switch (customClaims?.role) {
-          case 'admin':
-            router.push('/admin');
-            break;
-          case 'organizer':
-            router.push('/organizer');
-            break;
-          case 'volunteer':
-            router.push('/volunteer');
-            break;
-          case 'audience':
-            router.push('/audience');
-            break;
-          default:
-            // If role is not set or claims are undefined after loading, go to login.
-            // This can happen if the user was just created and claims are not yet set.
-            // A re-login would typically solve this as claims would be present on the new token.
-            router.push('/login');
-            break;
-        }
-      } else {
+    // If there is no user, redirect to login
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    // If there is a user, but claims are still being loaded, wait.
+    if (customClaims === null) {
+      return;
+    }
+    
+    // Once claims are loaded, redirect based on role
+    switch (customClaims?.role) {
+      case 'admin':
+        router.push('/admin');
+        break;
+      case 'organizer':
+        router.push('/organizer');
+        break;
+      case 'volunteer':
+        router.push('/volunteer');
+        break;
+      case 'audience':
+        router.push('/audience');
+        break;
+      default:
+        // This case handles users who are authenticated but have no role claim.
+        // This can happen during initial sign-up before claims are set.
+        // A re-login after claims are set by an admin would grant them access.
         router.push('/login');
-      }
+        break;
     }
   }, [user, customClaims, loading, router]);
 
