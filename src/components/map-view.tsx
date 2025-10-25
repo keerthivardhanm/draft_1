@@ -467,22 +467,22 @@ export function MapView() {
                     <div className="small">Simulated Attendees (for demo)</div>
                     <div className="sim-row">
                         <Input id="sim-count" type="number" min="1" value={simCount} onChange={(e) => setSimCount(parseInt(e.target.value, 10))}/>
-                        <Button id="spawn-sim" onClick={() => spawnSimulatedPeople(simCount)}>Spawn</Button>
+                        <button id="spawn-sim" onClick={() => spawnSimulatedPeople(simCount)}>Spawn</button>
                     </div>
                     <div className="mt-2">
-                         <Button id="estimate-crowd" className="w-full bg-[#ff7043] hover:bg-[#ff8a65]" onClick={() => estimateCrowd(25000)}>Estimate for 25,000</Button>
+                         <button id="estimate-crowd" className="w-full secondary-button" onClick={() => estimateCrowd(25000)}>Estimate for 25,000</button>
                     </div>
                     <div className="mt-2">
-                        <Button id="export-csv" onClick={handleExportCsv} className="w-full">Download Crowd Report (CSV)</Button>
+                        <button id="export-csv" onClick={handleExportCsv} className="w-full">Download Crowd Report (CSV)</button>
                     </div>
                     <div className="mt-2">
-                        <Button
+                        <button
                             onClick={toggleHeatOverlay}
-                            className="w-full bg-[#8e24aa] hover:bg-[#ab47bc]"
-                            style={{ opacity: heatOverlayVisible ? 1 : 0.6 }}
+                            className="w-full"
+                            style={{ opacity: heatOverlayVisible ? 1 : 0.6, backgroundColor: '#8e24aa' }}
                         >
                             Toggle Zone Heat Overlay
-                        </Button>
+                        </button>
                     </div>
                 </div>
 
@@ -507,8 +507,8 @@ export function MapView() {
                                     <div id={`risk-${zone.id}`} className="risk-fill" style={{ width: riskWidth, background: riskColor }}></div>
                                 </div>
                                 <div className="mt-2 flex gap-2">
-                                    <Button onClick={() => handleRenameZone(zone.id)} className="bg-[#6d4c41] hover:bg-[#8d6e63] h-auto px-2 py-1 text-xs">Rename</Button>
-                                    <Button onClick={() => handleDeleteZone(zone.id)} className="bg-[#e53935] hover:bg-[#ef5350] h-auto px-2 py-1 text-xs">Delete</Button>
+                                    <button onClick={() => handleRenameZone(zone.id)} className="text-xs" style={{backgroundColor: '#6d4c41'}}>Rename</button>
+                                    <button onClick={() => handleDeleteZone(zone.id)} className="text-xs" style={{backgroundColor: '#e53935'}}>Delete</button>
                                 </div>
                             </div>
                         )

@@ -118,3 +118,47 @@
 .dark .gm-style .gm-style-iw-c {
      background-color: hsl(var(--card)) !important;
 }
+
+#right .button, #right button {
+  font-size: 14px;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  display: inline-block;
+  margin-top: 8px;
+}
+
+#right .button:hover, #right button:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+#right .sim-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#right .sim-row input {
+  flex: 1;
+}
+
+#right .sim-row button {
+  flex-shrink: 0;
+  width: auto;
+}
+
+#right .secondary-button {
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+}
+
+#right .secondary-button:hover {
+    background-color: hsl(var(--secondary) / 0.9);
+}
