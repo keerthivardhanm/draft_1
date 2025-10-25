@@ -6,7 +6,6 @@ import {
   AlertTriangle,
   BarChart3,
   Bell,
-  ChevronDown,
   LayoutDashboard,
   Map,
   MoreHorizontal,
@@ -45,6 +44,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase/auth/use-user';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from './ui/sidebar';
 
 
 const densityChartConfig = {
@@ -61,7 +61,7 @@ const sosChartConfig = {
   },
 } satisfies ChartConfig
 
-export function AppHeader() {
+export function AppSidebar() {
   const { user } = useUser();
   const router = useRouter();
   const { toast } = useToast();
@@ -77,22 +77,49 @@ export function AppHeader() {
   };
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-card px-4 md:px-6">
-       <div className="flex items-center gap-2">
+    <Sidebar>
+      <SidebarHeader>
+        <div className="flex items-center gap-2">
           <Logo className="size-8 text-primary" />
           <span className="text-lg font-semibold">CrowdSafe 360°</span>
         </div>
-      <h1 className="hidden text-lg font-semibold md:block">Admin Dashboard</h1>
-      <div className="ml-auto flex items-center gap-4">
-        <div className="relative hidden w-64 md:block">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input placeholder="Search zones, events..." className="pl-8" />
-        </div>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Bell className="size-5" />
-          <span className="sr-only">Toggle notifications</span>
-        </Button>
-         <DropdownMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton isActive>
+              <LayoutDashboard />
+              Dashboard
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton>
+              <Map />
+              Zones
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton>
+              <BarChart3 />
+              Reports
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton>
+              <Users />
+              Team
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton>
+              <Settings />
+              Settings
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarContent>
+      <SidebarFooter>
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start gap-2 px-2">
               <Avatar className="size-8">
@@ -106,7 +133,7 @@ export function AppHeader() {
               <MoreHorizontal className="ml-auto" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" side="bottom" align='end'>
+          <DropdownMenuContent className="w-56" side="right" align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile</DropdownMenuItem>
@@ -115,6 +142,24 @@ export function AppHeader() {
             <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
+export function AppHeader() {
+  return (
+    <header className="flex h-14 items-center gap-4 border-b bg-card px-4 md:px-6">
+      <h1 className="hidden text-lg font-semibold md:block">Dashboard</h1>
+      <div className="ml-auto flex items-center gap-4">
+        <div className="relative hidden w-64 md:block">
+          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <Input placeholder="Search zones, events..." className="pl-8" />
+        </div>
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <Bell className="size-5" />
+          <span className="sr-only">Toggle notifications</span>
+        </Button>
       </div>
     </header>
   )
