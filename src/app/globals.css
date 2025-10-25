@@ -65,3 +65,56 @@
     @apply bg-background text-foreground;
   }
 }
+
+.map-container {
+    display: flex;
+    height: 70vh;
+}
+#map { flex: 1; }
+#right { width: 420px; background:#f7f8fa; border-left:1px solid #e1e4e8; padding:12px; overflow:auto; }
+.dark #right {
+    background: hsl(var(--card));
+    border-left: 1px solid hsl(var(--border));
+}
+#right h2 { margin:6px 0 12px; font-size:18px; }
+#right .card { background: white; padding:10px; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.06); }
+.dark #right .card {
+    background: hsl(var(--card-foreground) / 0.05);
+}
+.zone-title { display:flex; justify-content:space-between; align-items:center; }
+.zone-stats { margin-top:8px; font-size:13px; }
+.risk-bar { height:10px; border-radius:6px; background:#eee; overflow:hidden; margin-top:8px; }
+.dark .risk-bar { background: hsl(var(--muted)); }
+.risk-fill { height:100%; width:0; background:linear-gradient(90deg,#2ecc71,#f1c40f,#e74c3c); }
+.controls { margin-bottom:12px; }
+.small { font-size:12px; color:#666; }
+.dark .small { color: hsl(var(--muted-foreground)); }
+#right button { padding:8px 10px; border-radius:6px; border:0; cursor:pointer; background:#1e88e5; color:white; }
+#right input, #right select { padding:8px; border-radius:6px; border:1px solid #ccc; width:100%; box-sizing:border-box; margin-top:6px; }
+.dark #right input, .dark #right select {
+    background: hsl(var(--input));
+    border-color: hsl(var(--border));
+}
+.sim-row { display:flex; gap:8px; margin-top:8px; }
+.badge { font-size:12px; background:#eee; padding:4px 6px; border-radius:6px; }
+.dark .badge { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+
+/* GM override */
+.gm-style-moc {
+    background-color: white !important;
+    padding: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    border-radius: 5px;
+}
+
+.dark .gm-style-moc {
+    background-color: hsl(var(--card)) !important;
+}
+
+.gm-style .gm-style-iw-c {
+    background-color: white !important;
+    padding: 12px !important;
+}
+.dark .gm-style .gm-style-iw-c {
+     background-color: hsl(var(--card)) !important;
+}

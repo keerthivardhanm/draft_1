@@ -62,6 +62,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Textarea } from '@/components/ui/textarea'
 import { Logo } from '@/components/icons'
+import { MapView } from '@/components/map-view'
 
 const densityChartConfig = {
   density: {
@@ -92,12 +93,8 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-3">
                 <MapView />
-              </div>
-              <div className="flex flex-col gap-6">
-                <SosAlerts />
-                <AiPredictions />
               </div>
             </div>
 
@@ -106,8 +103,9 @@ export default function DashboardPage() {
               <SosChart />
             </div>
 
-            <div className="mt-6">
-              <AiSummaryGenerator />
+            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <AiPredictions />
+                <AiSummaryGenerator />
             </div>
           </main>
         </div>
@@ -232,54 +230,6 @@ function KpiCard({ kpi }: { kpi: Kpi }) {
           </span>
           vs last hour
         </p>
-      </CardContent>
-    </Card>
-  )
-}
-
-function MapView() {
-  const mapImage = PlaceHolderImages.find((img) => img.id === 'map-background');
-
-  return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Live Zone Map</CardTitle>
-        <CardDescription>Real-time crowd density visualization.</CardDescription>
-      </CardHeader>
-      <CardContent className="relative aspect-video h-full w-full">
-        {mapImage && (
-          <Image
-            src={mapImage.imageUrl}
-            alt={mapImage.description}
-            data-ai-hint={mapImage.imageHint}
-            fill
-            className="rounded-md object-cover"
-          />
-        )}
-        {/* Simulated heatmap zones */}
-        <div className="absolute left-[10%] top-[15%] size-1/4 rounded-full bg-emerald-500/30 blur-2xl animate-pulse"></div>
-        <div className="absolute right-[15%] top-[20%] size-1/3 rounded-full bg-amber-500/40 blur-2xl animate-pulse [animation-delay:-1s]"></div>
-        <div className="absolute bottom-[10%] left-[25%] size-1/4 rounded-full bg-red-500/50 blur-2xl animate-pulse [animation-delay:-2s]"></div>
-        <div className="absolute inset-0 flex items-center justify-center">
-            <Siren className="size-8 text-white drop-shadow-lg animate-ping absolute right-[25%] top-[35%]" />
-        </div>
-        <div className="absolute bottom-2 right-2 flex gap-1 rounded-lg bg-background/70 p-1 backdrop-blur-sm">
-          <Button variant="ghost" size="icon" title="Add Zone">
-            <Plus />
-          </Button>
-          <Button variant="ghost" size="icon" title="Merge Zones">
-            <Merge />
-          </Button>
-          <Button variant="ghost" size="icon" title="Split Zone">
-            <Split />
-          </Button>
-          <Button variant="ghost" size="icon" title="Timelapse Playback">
-            <Play />
-          </Button>
-          <Button variant="ghost" size="icon" title="Heat Signature Mode">
-            <Thermometer />
-          </Button>
-        </div>
       </CardContent>
     </Card>
   )

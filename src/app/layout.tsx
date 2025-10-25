@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
+import Script from 'next/script';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -33,6 +34,10 @@ export default function RootLayout({
       <body className={cn('min-h-screen bg-background font-body antialiased', inter.variable)}>
         {children}
         <Toaster />
+        <Script
+          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCFIFw8X7OTSOJ5lh-Z-HUxzNzbD2TYl-w&libraries=drawing,geometry,visualization&callback=Function.prototype"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
