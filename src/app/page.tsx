@@ -6,49 +6,19 @@ import { useUser } from '@/firebase/auth/use-user';
 import { Logo } from '@/components/icons';
 
 export default function HomePage() {
-  const { user, customClaims, loading } = useUser();
+  const { user, loading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    // Wait until the loading is complete
     if (loading) {
       return;
     }
-
-    // If there is no user, redirect to login
     if (!user) {
       router.push('/login');
-      return;
+    } else {
+      router.push('/admin');
     }
-
-    // If there is a user, but claims are still being loaded, wait.
-    if (customClaims === null) {
-      return;
-    }
-    
-    // Once claims are loaded, redirect based on role
-    switch (customClaims?.role) {
-      case 'admin':
-        router.push('/admin');
-        break;
-      case 'organizer':
-        router.push('/organizer');
-        break;
-      case 'volunteer':
-        router.push('/volunteer');
-        break;
-      case 'audience':
-        router.push('/audience');
-        break;
-      default:
-        // This case handles users who are authenticated but have no role claim.
-        // This can happen during initial sign-up before claims are set.
-        // We will not redirect here to prevent a loop.
-        // In a real app, you might show a "pending approval" message.
-        // Only redirect to login if the user is truly not authenticated, which is handled above.
-        break;
-    }
-  }, [user, customClaims, loading, router]);
+  }, [user, loading, router]);
 
   return (
      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
