@@ -3,6 +3,7 @@
 import { AppHeader, AppSidebar } from '@/components/dashboard-components';
 import { KpiCard, DensityChart, SosChart, AiPredictions, AiSummaryGenerator } from '@/components/dashboard-components';
 import { MapView } from '@/components/map-view';
+import { CrowdDensityMonitor } from '@/components/crowd-density-monitor';
 import { kpiData } from '@/lib/data';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 
@@ -33,6 +34,10 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
             </div>
+          </div>
+
+          <div className="mt-6">
+            <CrowdDensityMonitor />
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">

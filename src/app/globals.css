@@ -161,3 +161,14 @@
 #right .secondary-button:hover {
     background-color: hsl(var(--secondary) / 0.9);
 }
+
+
+/* Crowd Density Monitor styles */
+#zones-container { display:flex; flex-wrap:wrap; gap:16px; }
+.density-zone { flex: 1 1 260px; min-width:220px; border-radius:12px; padding:14px; color:#fff; transition: background-color 0.6s ease, transform 0.2s; box-shadow: 0 6px 14px rgba(20,30,60,0.06); }
+.density-zone:hover { transform: translateY(-4px); }
+.density-zone h3 { margin:0 0 8px 0; font-size:16px; }
+.density-zone .meta { font-size:13px; margin-top:8px; opacity:0.95; }
+.density-zone .stat { background: rgba(255,255,255,0.12); padding:8px; border-radius:8px; margin-top:10px; font-weight:600; }
+.legend { margin-top:12px; display:flex; gap:8px; align-items:center; font-size:13px; }
+.swatch { width:12px; height:12px; border-radius:3px; display:inline-block; margin-right:6px; vertical-align:middle; }
