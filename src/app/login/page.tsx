@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,9 +23,11 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
 
-  if (user && !userLoading) {
-    router.push('/');
-  }
+  useEffect(() => {
+    if (user && !userLoading) {
+      router.push('/');
+    }
+  }, [user, userLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +59,7 @@ export default function LoginPage() {
     }
   };
 
-  if (userLoading) {
+  if (userLoading || user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <div className="flex items-center gap-4">
