@@ -15,6 +15,7 @@ import {
   TrendingDown,
   TrendingUp,
   Users,
+  Calendar,
 } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 import { useRouter } from 'next/navigation';
@@ -94,8 +95,20 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton>
+              <Calendar />
+              Events
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton>
               <Map />
               Zones
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton>
+              <Bell />
+              Alerts
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
