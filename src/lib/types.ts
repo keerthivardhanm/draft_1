@@ -12,12 +12,15 @@ export type Kpi = {
 
 export type Alert = {
   id: string;
-  zone: string;
-  time: string;
-  risk: 'High' | 'Medium' | 'Low';
+  type: 'manual' | 'auto' | 'sos';
+  zoneId?: string;
+  eventId: string;
+  message: string;
+  priority: 'High' | 'Medium' | 'Low';
+  senderId: string;
+  status: 'resolved' | 'pending';
+  timestamp: string; // ISO 8601 format
 };
-
-export type SosAlert = Alert;
 
 export type Prediction = {
     id: string;
@@ -33,6 +36,7 @@ export type User = {
   email: string;
   role: 'admin' | 'organizer' | 'volunteer' | 'audience';
   assignedZones: string[];
+  eventId?: string;
   avatar?: string;
   location?: { 
     lat: number;
@@ -45,30 +49,38 @@ export type Event = {
   id: string;
   name: string;
   description: string;
-  startAt: string;
-  endAt: string;
+  startAt: string; // ISO 8601 format
+  endAt: string; // ISO 8601 format
   status: 'upcoming' | 'ongoing' | 'completed';
   createdAt: Timestamp;
-};
-
-export type SubZone = {
-  id: string;
-  parentId: string;
-  name: string;
-  polygon: { lat: number; lng: number }[];
-  area: number;
-  capacity?: number;
-  overlay?: google.maps.Polygon;
 };
 
 export type Zone = {
   id: string;
   name: string;
+  eventId: string;
   polygon: { lat: number; lng: number }[];
   area: number;
   capacity?: number;
   color: string;
   organizers?: string[];
   overlay?: google.maps.Polygon;
-  subZones?: Record<string, SubZone>;
+  currentCount?: number;
+  density?: number;
+  intensity?: number;
+};
+
+export type SOSReport = {
+    id: string;
+    userId: string;
+    zoneId: string;
+    eventId: string;
+    type: string;
+    description: string;
+    location: {
+        lat: number;
+        lng: number;
+    };
+    resolved: boolean;
+    timestamp: string; // ISO 8601 format
 };

@@ -23,7 +23,8 @@
           }
         },
         "eventId": {
-          "type": "string"
+          "type": "string",
+          "description": "The ID of the event the user is associated with."
         },
         "location": {
           "type": "object",
@@ -86,7 +87,8 @@
       "type": "object",
       "properties": {
         "eventId": {
-          "type": "string"
+          "type": "string",
+          "description": "The ID of the event this zone belongs to."
         },
         "name": {
           "type": "string"
@@ -98,13 +100,16 @@
           "type": "number"
         },
         "currentCount": {
-          "type": "number"
+          "type": "number",
+          "description": "The real-time count of people in the zone."
         },
         "density": {
-          "type": "number"
+          "type": "number",
+          "description": "The real-time crowd density (people per square meter)."
         },
         "intensity": {
-          "type": "number"
+          "type": "number",
+          "description": "A calculated metric for crowd activity level."
         },
         "colorCode": {
           "type": "string"
@@ -126,7 +131,7 @@
     },
     "alert": {
       "title": "Alert",
-      "description": "Represents a safety alert.",
+      "description": "Represents a safety alert, can be system-generated or manually created by an admin/organizer.",
       "type": "object",
       "properties": {
         "type": {
@@ -137,7 +142,8 @@
           "type": "string"
         },
         "eventId": {
-          "type": "string"
+          "type": "string",
+          "description": "The ID of the event where the alert occurred."
         },
         "message": {
           "type": "string"
@@ -227,7 +233,8 @@
           "type": "string"
         },
         "eventId": {
-          "type": "string"
+          "type": "string",
+          "description": "The ID of the event where the SOS was triggered."
         },
         "type": {
           "type": "string"

@@ -2,13 +2,80 @@
 
 import * as React from 'react';
 import { AppHeader, AppSidebar } from '@/components/dashboard-components';
-import { KpiCard, DensityChart, SosChart, AiPredictions, AiSummaryGenerator } from '@/components/dashboard-components';
+import { KpiCard, DensityChart, AiPredictions, AiSummaryGenerator } from '@/components/dashboard-components';
 import { MapView } from '@/components/map-view';
 import { CrowdDensityMonitor, type ZoneDensityData } from '@/components/crowd-density-monitor';
 import { kpiData } from '@/lib/data';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirestore } from '@/firebase';
+import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { SOSReport } from '@/lib/types';
+import { formatDistanceToNow } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 const MAX_HISTORY_LENGTH = 60; // Store last 60 seconds
+
+function SosAlertFeed() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const sosQuery = firestore ? query(
+    collection(firestore, 'sosReports'),
+    where('resolved', '==', false),
+    orderBy('timestamp', 'desc')
+  ) : null;
+  const { data: sosReports, loading } = useCollection<SOSReport>(sosQuery);
+
+  const handleResolve = async (id: string) => {
+    if (!firestore) return;
+    try {
+      await updateDoc(doc(firestore, 'sosReports', id), { resolved: true });
+      toast({ title: 'SOS Resolved', description: `Report ${id} has been marked as resolved.` });
+    } catch (error) {
+      console.error(error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not resolve the SOS report.' });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Live SOS Alerts</CardTitle>
+        <CardDescription>Real-time emergency reports from audience members.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <p>Loading alerts...</p>
+        ) : sosReports.length === 0 ? (
+          <p className="text-muted-foreground">No active SOS alerts.</p>
+        ) : (
+          <div className="space-y-4">
+            {sosReports.map(report => (
+              <div key={report.id} className="flex items-start gap-4">
+                <div className="mt-1 h-3 w-3 rounded-full bg-red-500 animate-pulse" />
+                <div className="flex-1">
+                  <p className="font-medium">
+                    SOS: {report.type} in Zone {report.zoneId || 'N/A'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {report.description}
+                  </p>
+                   <p className="text-xs text-muted-foreground mt-1">
+                    {formatDistanceToNow(new Date(report.timestamp), { addSuffix: true })} from user {report.userId.substring(0,5)}...
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => handleResolve(report.id)}>Resolve</Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 
 export default function AdminDashboard() {
   const [densityHistory, setDensityHistory] = React.useState<any[]>([]);
@@ -65,7 +132,7 @@ export default function AdminDashboard() {
 
           <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
             <DensityChart data={densityHistory} />
-            <SosChart />
+            <SosAlertFeed />
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
