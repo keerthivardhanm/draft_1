@@ -9,12 +9,16 @@ import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmail, signUpWithEmail } from '@/firebase/auth';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+
+type Role = 'admin' | 'organizer' | 'volunteer' | 'audience';
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [role, setRole] = useState<Role>('admin');
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -36,9 +40,8 @@ export default function LoginPage() {
         const user = await signInWithEmail(email, password);
         if (user) {
           toast({ title: 'Login Successful' });
-          // Redirect based on role, fetched from custom claims (in a real app)
-          // For now, we'll just go to admin
-          router.push('/admin');
+          // Redirect based on selected role for demo purposes
+          router.push(`/${role}`);
         }
       }
     } catch (error: any) {
@@ -77,6 +80,35 @@ export default function LoginPage() {
             <Button type="submit" size="lg" disabled={loading}>
               {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Log In')}
             </Button>
+            <div className="pt-4">
+                <Label className="text-sm font-medium">Select Role to View As</Label>
+                <RadioGroup defaultValue="admin" className="grid grid-cols-2 gap-4 pt-2" onValueChange={(value: Role) => setRole(value)}>
+                    <div>
+                        <RadioGroupItem value="admin" id="admin" className="peer sr-only" />
+                        <Label htmlFor="admin" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            Admin
+                        </Label>
+                    </div>
+                     <div>
+                        <RadioGroupItem value="organizer" id="organizer" className="peer sr-only" />
+                        <Label htmlFor="organizer" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            Organizer
+                        </Label>
+                    </div>
+                     <div>
+                        <RadioGroupItem value="volunteer" id="volunteer" className="peer sr-only" />
+                        <Label htmlFor="volunteer" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            Volunteer
+                        </Label>
+                    </div>
+                     <div>
+                        <RadioGroupItem value="audience" id="audience" className="peer sr-only" />
+                        <Label htmlFor="audience" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            Audience
+                        </Label>
+                    </div>
+                </RadioGroup>
+            </div>
           </CardContent>
           <CardFooter className="flex justify-center">
              <Button variant="link" type="button" onClick={() => setIsSignUp(!isSignUp)}>
