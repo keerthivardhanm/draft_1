@@ -1,25 +1,26 @@
 'use client';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bell, MessageSquare, QrCode, ShieldCheck, Users, MapPin } from "lucide-react";
+import { BarChart, Bell, MessageSquare, QrCode, ShieldCheck, Users, MapPin, Siren, CheckCircle } from "lucide-react";
 import { useUser } from "@/firebase/auth/use-user";
 import { useFirestore } from "@/firebase";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, orderBy } from 'firebase/firestore';
 import type { User, SOSReport } from "@/lib/types";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 function OrganizerSosAlertFeed({ assignedZones }: { assignedZones: string[] }) {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  // Firestore query for SOS reports in the organizer's zones
   const sosQuery = (firestore && assignedZones?.length) ? query(
     collection(firestore, 'sosReports'),
-    where('resolved', '==', false),
-    where('zoneId', 'in', assignedZones)
+    where('status', '==', 'dispatched'),
+    where('zoneId', 'in', assignedZones),
+    orderBy('timestamp', 'desc')
   ) : null;
 
   const { data: sosReports, loading } = useCollection<SOSReport>(sosQuery);
@@ -27,7 +28,7 @@ function OrganizerSosAlertFeed({ assignedZones }: { assignedZones: string[] }) {
   const handleResolve = async (id: string) => {
     if (!firestore) return;
     try {
-      await updateDoc(doc(firestore, 'sosReports', id), { resolved: true });
+      await updateDoc(doc(firestore, 'sosReports', id), { status: 'resolved' });
       toast({ title: 'SOS Resolved', description: `Report ${id} marked as resolved.` });
     } catch (error) {
       console.error(error);
@@ -38,31 +39,43 @@ function OrganizerSosAlertFeed({ assignedZones }: { assignedZones: string[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Live Alert Feed</CardTitle>
-        <CardDescription>Real-time incidents in your assigned zones.</CardDescription>
+        <CardTitle>Dispatched SOS Alerts</CardTitle>
+        <CardDescription>Incidents in your zones that require action.</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p>Loading alerts...</p>
+          <p>Loading dispatched alerts...</p>
         ) : sosReports.length === 0 ? (
-          <p className="text-muted-foreground">No active alerts in your zones.</p>
+          <p className="text-muted-foreground">No dispatched alerts in your zones.</p>
         ) : (
           <div className="space-y-4">
             {sosReports.map(report => (
-              <div key={report.id} className="flex items-start gap-4">
-                <div className={`mt-1 h-3 w-3 rounded-full ${report.type === 'Medical' ? 'bg-amber-500' : 'bg-red-500'} animate-pulse`} />
-                <div className="flex-1">
-                  <p className="font-medium">
-                    {report.type} SOS in Zone {report.zoneId}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {report.description || "No description provided."}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDistanceToNow(new Date(report.timestamp), { addSuffix: true })}
-                  </p>
+              <div key={report.id} className="flex flex-col gap-2 rounded-lg border p-3">
+                <div className="flex items-start gap-4">
+                    <div className="mt-1">
+                        <Siren className={`h-5 w-5 ${report.type === 'Medical' ? 'text-amber-500' : 'text-red-500'}`} />
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-medium">
+                            {report.type} in Zone {report.zoneId}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            {report.description || "No description provided."}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {formatDistanceToNow(new Date(report.timestamp), { addSuffix: true })}
+                        </p>
+                         <p className="text-xs text-muted-foreground mt-1 font-mono">
+                            Coords: {report.location.lat.toFixed(4)}, {report.location.lng.toFixed(4)}
+                        </p>
+                    </div>
                 </div>
-                <Button size="sm" onClick={() => handleResolve(report.id)}>Resolve</Button>
+                <div className="flex justify-end">
+                    <Button size="sm" onClick={() => handleResolve(report.id)}>
+                        <CheckCircle className="mr-2 h-4 w-4"/>
+                        Mark as Resolved
+                    </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -75,23 +88,24 @@ function OrganizerSosAlertFeed({ assignedZones }: { assignedZones: string[] }) {
 export default function OrganizerDashboard() {
   const { user: authUser } = useUser();
   const firestore = useFirestore();
+  const { data: organizer, loading: userLoading } = useDoc<User>(authUser ? doc(firestore!, 'users', authUser.uid) : null);
+  const assignedZones = organizer?.assignedZones || [];
 
-  // Fetch organizer's data from 'users' collection
-  const userDocRef = authUser ? doc(firestore!, 'users', authUser.uid) : null;
-  const { data: organizer, loading: userLoading } = useDoc<User>(userDocRef);
-
-  // Fetch volunteers assigned to the same zones as the organizer
-  const volunteersQuery = (firestore && organizer?.assignedZones?.length) ? query(
+  const volunteersQuery = (firestore && assignedZones.length) ? query(
     collection(firestore, 'users'),
     where('role', '==', 'volunteer'),
-    where('assignedZones', 'array-contains-any', organizer.assignedZones)
+    where('assignedZones', 'array-contains-any', assignedZones)
   ) : null;
   const { data: volunteers, loading: volunteersLoading } = useCollection<User>(volunteersQuery);
-  
-  // Fetch total people count (mock for now, should come from zone data)
-  const totalPeopleInZones = 1204;
 
-  const assignedZones = organizer?.assignedZones || [];
+  const dispatchedSosQuery = (firestore && assignedZones.length) ? query(
+    collection(firestore, 'sosReports'),
+    where('status', '==', 'dispatched'),
+    where('zoneId', 'in', assignedZones)
+  ) : null;
+  const { data: activeAlerts, loading: alertsLoading } = useCollection<SOSReport>(dispatchedSosQuery);
+
+  const totalPeopleInZones = 1204; // This should be derived from live zone data
 
   if (userLoading) {
     return <div className="flex min-h-screen items-center justify-center">Loading dashboard...</div>
@@ -113,7 +127,7 @@ export default function OrganizerDashboard() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl font-bold">{assignedZones.length}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     {assignedZones.join(', ') || 'No zones assigned'}
                   </p>
                 </CardContent>
@@ -123,7 +137,7 @@ export default function OrganizerDashboard() {
                    <CardTitle className="text-lg">Active Alerts</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold text-destructive">5</p>
+                  <p className="text-3xl font-bold text-destructive">{alertsLoading ? '...' : activeAlerts.length}</p>
                   <p className="text-xs text-muted-foreground">Incidents require attention</p>
                 </CardContent>
               </Card>

@@ -47,12 +47,13 @@ export default function AudienceDashboard() {
         description: sosDescription,
         location: mockLocation,
         timestamp: new Date().toISOString(),
-        resolved: false,
+        status: 'pending', // Set initial status to 'pending'
+        resolved: false, // Keep for backward compatibility if needed, but status is primary
     };
 
     try {
         await addDoc(collection(firestore, 'sosReports'), newSosReport);
-        toast({ title: 'SOS Sent', description: 'Help is on the way. Stay put.' });
+        toast({ title: 'SOS Sent', description: 'Help is on the way. Staff has been notified.' });
         setIsSosDialogOpen(false);
         setSosType('');
         setSosDescription('');

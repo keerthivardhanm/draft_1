@@ -269,6 +269,11 @@
             }
           }
         },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "dispatched", "resolved"],
+          "description": "The current status of the SOS report."
+        },
         "resolved": {
           "type": "boolean"
         },
@@ -277,7 +282,7 @@
           "format": "date-time"
         }
       },
-      "required": ["userId", "eventId", "type", "location", "timestamp"]
+      "required": ["userId", "eventId", "type", "location", "timestamp", "status"]
     }
   },
   "auth": {

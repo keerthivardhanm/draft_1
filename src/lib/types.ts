@@ -91,5 +91,6 @@ export type SOSReport = {
         lng: number;
     };
     resolved: boolean;
+    status: 'pending' | 'dispatched' | 'resolved';
     timestamp: string; // ISO 8601 format
 };

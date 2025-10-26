@@ -15,29 +15,42 @@ import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-
-const MAX_HISTORY_LENGTH = 60; // Store last 60 seconds
+import { Siren, CheckCircle, Rocket } from 'lucide-react';
 
 function SosAlertFeed() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const sosQuery = firestore ? query(
     collection(firestore, 'sosReports'),
-    where('resolved', '==', false),
+    where('status', '!=', 'resolved'),
+    orderBy('status', 'asc'),
     orderBy('timestamp', 'desc')
   ) : null;
   const { data: sosReports, loading } = useCollection<SOSReport>(sosQuery);
 
-  const handleResolve = async (id: string) => {
+  const handleUpdateStatus = async (id: string, status: SOSReport['status']) => {
     if (!firestore) return;
     try {
-      await updateDoc(doc(firestore, 'sosReports', id), { resolved: true });
-      toast({ title: 'SOS Resolved', description: `Report ${id} has been marked as resolved.` });
+      await updateDoc(doc(firestore, 'sosReports', id), { status });
+      toast({ title: `SOS ${status.charAt(0).toUpperCase() + status.slice(1)}`, description: `Report ${id} has been marked as ${status}.` });
     } catch (error) {
       console.error(error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not resolve the SOS report.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update the SOS report.' });
     }
   };
+
+  const getStatusBadge = (status: SOSReport['status']) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="destructive">Pending</Badge>;
+      case 'dispatched':
+        return <Badge className="bg-amber-500 text-white">Dispatched</Badge>;
+      case 'resolved':
+        return <Badge className="bg-green-500 text-white">Resolved</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  }
 
   return (
     <Card>
@@ -53,20 +66,41 @@ function SosAlertFeed() {
         ) : (
           <div className="space-y-4">
             {sosReports.map(report => (
-              <div key={report.id} className="flex items-start gap-4">
-                <div className="mt-1 h-3 w-3 rounded-full bg-red-500 animate-pulse" />
-                <div className="flex-1">
-                  <p className="font-medium">
-                    SOS: {report.type} in Zone {report.zoneId || 'N/A'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {report.description}
-                  </p>
-                   <p className="text-xs text-muted-foreground mt-1">
-                    {formatDistanceToNow(new Date(report.timestamp), { addSuffix: true })} from user {report.userId.substring(0,5)}...
-                  </p>
+              <div key={report.id} className="flex flex-col gap-2 rounded-lg border p-3">
+                 <div className="flex items-start gap-4">
+                    <div className="mt-1">
+                        <Siren className="h-5 w-5 text-destructive" />
+                    </div>
+                    <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                            <p className="font-medium">
+                                {report.type} in Zone {report.zoneId || 'N/A'}
+                            </p>
+                            {getStatusBadge(report.status)}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {report.description || 'No description provided.'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {formatDistanceToNow(new Date(report.timestamp), { addSuffix: true })} from user {report.userId.substring(0,5)}...
+                        </p>
+                         <p className="text-xs text-muted-foreground mt-1 font-mono">
+                            Coords: {report.location.lat.toFixed(4)}, {report.location.lng.toFixed(4)}
+                        </p>
+                    </div>
                 </div>
-                <Button size="sm" onClick={() => handleResolve(report.id)}>Resolve</Button>
+                <div className="flex justify-end gap-2 mt-2">
+                    {report.status === 'pending' && (
+                         <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(report.id, 'dispatched')}>
+                            <Rocket className="mr-2 h-4 w-4"/>
+                            Dispatch
+                        </Button>
+                    )}
+                    <Button size="sm" onClick={() => handleUpdateStatus(report.id, 'resolved')}>
+                        <CheckCircle className="mr-2 h-4 w-4"/>
+                        Resolve
+                    </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -91,8 +125,8 @@ export default function AdminDashboard() {
 
     setDensityHistory(prevHistory => {
         const updatedHistory = [...prevHistory, newEntry];
-        if (updatedHistory.length > MAX_HISTORY_LENGTH) {
-            return updatedHistory.slice(updatedHistory.length - MAX_HISTORY_LENGTH);
+        if (updatedHistory.length > 60) { // Store last 60 seconds
+            return updatedHistory.slice(updatedHistory.length - 60);
         }
         return updatedHistory;
     });
