@@ -29,17 +29,18 @@ export function VideoFeed({ source, stream, onStop, onError, onAnalysisUpdate }:
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const { toast } = useToast();
   const detectionInterval = useRef<NodeJS.Timeout | null>(null);
+  const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1/model';
+
 
   // Load face-api models
   useEffect(() => {
     const loadModels = async () => {
       try {
-        // The path is relative to the `public` directory
         await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-          faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-          faceapi.nets.faceExpressionNet.loadFromUri('/models'),
-          faceapi.nets.ageGenderNet.loadFromUri('/models'),
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
         ]);
         setModelsLoaded(true);
       } catch (error) {
