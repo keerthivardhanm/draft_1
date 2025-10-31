@@ -51,15 +51,29 @@ export default function MonitoringPage() {
       if (firestore && analysisData && inputSource) {
         const { peopleCount, densityLevel } = analysisData;
         
-        const sourceInfo = (inputSource.type === 'file' && inputSource.content instanceof File)
-          ? inputSource.content.name
-          : inputSource.content as string;
+        let sourceInfo: string;
+        switch(inputSource.type) {
+            case 'file':
+                sourceInfo = (inputSource.content instanceof File) ? inputSource.content.name : 'Local File';
+                break;
+            case 'url':
+                sourceInfo = inputSource.content as string;
+                break;
+            case 'webcam':
+                sourceInfo = 'Webcam Feed';
+                break;
+            case 'screen':
+                sourceInfo = 'Screen Share';
+                break;
+            default:
+                sourceInfo = 'Unknown';
+        }
 
         addDoc(collection(firestore, 'heatmapRuns'), {
           eventId: 'active-event-id', // Hardcoded for now
           timestamp: serverTimestamp(),
           sourceType: inputSource.type,
-          sourceInfo: sourceInfo,
+          sourceInfo: sourceInfo || '', // Ensure it's never undefined
           zoneAnalytics: [ // Simulating for one zone for now
             {
               zoneId: 'monitor_zone',
