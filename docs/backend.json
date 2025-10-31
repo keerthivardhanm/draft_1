@@ -283,6 +283,45 @@
         }
       },
       "required": ["userId", "eventId", "type", "location", "timestamp", "status"]
+    },
+    "heatmapRun": {
+      "title": "Heatmap Run",
+      "description": "Represents a single run of the crowd density analysis.",
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["webcam", "screen", "url", "file"]
+        },
+        "sourceInfo": {
+          "type": "string",
+          "description": "URL or filename of the source."
+        },
+        "zoneAnalytics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "zoneId": { "type": "string" },
+              "crowdCount": { "type": "number" },
+              "densityLevel": { "type": "string", "enum": ["low", "medium", "high"] },
+              "alertTriggered": { "type": "boolean" }
+            }
+          }
+        },
+        "heatmapSnapshotUrl": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["eventId", "timestamp", "sourceType"]
     }
   },
   "auth": {
@@ -316,6 +355,10 @@
     "/sosReports/{sosId}": {
       "schema": { "$ref": "#/entities/sosReport" },
       "description": "SOS reports"
+    },
+    "/heatmapRuns/{runId}": {
+        "schema": { "$ref": "#/entities/heatmapRun" },
+        "description": "Analytics data for each heatmap generation run."
     }
   }
 }

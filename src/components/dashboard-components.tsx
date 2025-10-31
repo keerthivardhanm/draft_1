@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
   Search,
   Settings,
+  ShieldAlert,
   Sparkles,
   TrendingDown,
   TrendingUp,
@@ -83,6 +84,7 @@ export function AppSidebar() {
 
   const menuItems = [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/admin/monitoring', label: 'Live Monitor', icon: ShieldAlert },
     { href: '/admin/events', label: 'Events', icon: Calendar },
     { href: '/admin/zones', label: 'Zones', icon: Map },
     { href: '/admin/alerts', label: 'Alerts', icon: Bell },
