@@ -57,8 +57,8 @@ export function InputSourceSelector({ onSourceSelect, disabled = false }: InputS
           <form onSubmit={handleUrlSubmit} className="flex items-center gap-2 mt-1">
             <Input
               id="url-input"
-              type="url"
-              placeholder="https://example.com/video.mp4"
+              type="text"
+              placeholder="rtsp://username:password@camera-ip:port/stream-path"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               disabled={disabled}
