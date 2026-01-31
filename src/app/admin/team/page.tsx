@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppHeader, AppSidebar } from '@/components/dashboard-components';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -36,7 +36,8 @@ import { useAuthGuard } from '@/hooks/use-auth-guard';
 export default function TeamPage() {
     useAuthGuard('admin');
     const firestore = useFirestore();
-    const { data: users, loading } = useCollection<User>(firestore ? collection(firestore, 'users') : null);
+    const usersQuery = useMemo(() => (firestore ? collection(firestore, 'users') : null), [firestore]);
+    const { data: users, loading } = useCollection<User>(usersQuery);
     const { toast } = useToast();
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);

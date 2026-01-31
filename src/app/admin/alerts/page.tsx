@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AppHeader, AppSidebar } from '@/components/dashboard-components';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,7 +15,11 @@ import { useAuthGuard } from '@/hooks/use-auth-guard';
 export default function AlertsPage() {
     useAuthGuard('admin');
     const firestore = useFirestore();
-    const alertsQuery = firestore ? query(collection(firestore, 'alerts'), orderBy('timestamp', 'desc')) : null;
+    
+    const alertsQuery = useMemo(() => (
+        firestore ? query(collection(firestore, 'alerts'), orderBy('timestamp', 'desc')) : null
+    ), [firestore]);
+
     const { data: alerts, loading } = useCollection<Alert>(alertsQuery);
 
     const getPriorityBadge = (priority: string) => {

@@ -20,12 +20,12 @@ import { Siren, CheckCircle, Rocket } from 'lucide-react';
 function SosAlertFeed() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const sosQuery = firestore ? query(
+  const sosQuery = React.useMemo(() => (firestore ? query(
     collection(firestore, 'sosReports'),
     where('status', '!=', 'resolved'),
     orderBy('status', 'asc'),
     orderBy('timestamp', 'desc')
-  ) : null;
+  ) : null), [firestore]);
   const { data: sosReports, loading } = useCollection<SOSReport>(sosQuery);
 
   const handleUpdateStatus = async (id: string, status: SOSReport['status']) => {

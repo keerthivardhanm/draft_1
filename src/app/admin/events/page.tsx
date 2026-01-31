@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AppHeader, AppSidebar } from '@/components/dashboard-components';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,8 @@ import { useAuthGuard } from '@/hooks/use-auth-guard';
 export default function EventsPage() {
   useAuthGuard('admin');
   const firestore = useFirestore();
-  const { data: events, loading } = useCollection<Event>(firestore ? collection(firestore, 'events') : null);
+  const eventsQuery = useMemo(() => (firestore ? collection(firestore, 'events') : null), [firestore]);
+  const { data: events, loading } = useCollection<Event>(eventsQuery);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleSaveEvent = async (e: React.FormEvent<HTMLFormElement>) => {
